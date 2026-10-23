@@ -6,66 +6,32 @@ const f = (nom, mods, o) => Object.assign({ nom, quantitatif: false, unite: '', 
 
 G.MODELES = [
   {
-    id: 'm-couvertures', nom: 'Couvertures de chauffe', theme: 'Chauffe',
-    resume: 'Épaisse, fine, fine + plastique. Soudure 360°, moisissure, bourgeons, racines.',
-    objectif: 'Savoir quelle couverture donne la meilleure soudure en sortie de chauffe sans augmenter la moisissure.',
-    question: 'Le type de couverture change-t-il le taux de soudure 360° ?',
-    hypothese: 'La couverture fine + plastique garde mieux l’humidité et améliore la soudure.',
-    dispositif: 'blocs', uniteNom: 'palox', repetitions: 3,
-    facteurs: [f('Couverture', ['Épaisse', 'Fine', 'Fine + plastique'])],
-    variables: [
-      v('Soudure 360°', 'binaire', { seuil: 5, cible: 50, notes: 'Observer 50 plants par palox à la sortie de chauffe.' }),
-      v('Moisissure', 'binaire', { sens: 'moins', seuil: 3, cible: 50 }),
-      v('État des bourgeons', 'ordinale', { echelle: 5, cible: 10, notes: '0 = sec ou mort, 5 = débourré sain. 10 plants par palox.' }),
-      v('Développement racinaire', 'ordinale', { echelle: 5, cible: 10, notes: '0 = aucune racine, 5 = chevelu abondant. 10 plants par palox.' })
+    id: 'm-acclimatation', nom: 'Acclimatation après décaissage', theme: 'Acclimatation',
+    resume: 'Acclimatation dehors (témoin) contre frigo 13 à 15 jours puis 1 jour dedans ou dehors, par porte-greffe.',
+    objectif: 'Savoir si un passage au frigo après le décaissage, suivi d’un jour d’acclimatation dedans ou dehors, donne d’aussi bons plants que l’acclimatation dehors habituelle, selon le porte-greffe.',
+    question: 'Le frigo après décaissage change-t-il la reprise, le débourrement, la vigueur et les racines ?',
+    hypothese: '',
+    dispositif: 'factoriel', uniteNom: 'lot', repetitions: 1,
+    facteurs: [
+      f('Après décaissage', ['Acclimatation dehors (témoin)', 'Frigo puis 1 jour dedans', 'Frigo puis 1 jour dehors']),
+      f('Porte-greffe', ['Porte-greffe A', 'Porte-greffe B'])
     ],
-    plan: { lignes: 3, colonnes: 3 }
-  },
-  {
-    id: 'm-membrane', nom: 'Membrane entre plant et couverture', theme: 'Chauffe',
-    resume: 'Pose juste après greffage, après soudure, ou sans membrane.',
-    objectif: 'Trouver le meilleur moment pour poser la membrane.',
-    question: 'Le moment de pose de la membrane change-t-il la soudure et la moisissure ?',
-    hypothese: '', dispositif: 'blocs', uniteNom: 'palox', repetitions: 3,
-    facteurs: [f('Membrane', ['Sans membrane (témoin)', 'Pose après greffage', 'Pose après soudure'])],
-    variables: [v('Soudure 360°', 'binaire', { seuil: 5 }), v('Moisissure', 'binaire', { sens: 'moins', seuil: 3 }), v('État des bourgeons', 'ordinale', { echelle: 5 })],
-    plan: { lignes: 3, colonnes: 3 }
-  },
-  {
-    id: 'm-portegreffes', nom: 'Porte-greffes ou cépages', theme: 'Greffage',
-    resume: 'Comparer la reprise et la vigueur de plusieurs porte-greffes.',
-    objectif: 'Comparer la reprise et la vigueur des combinaisons.', question: '', hypothese: '',
-    dispositif: 'crd', uniteNom: 'lot', repetitions: 4,
-    facteurs: [f('Porte-greffe', ['110R', 'SO4', '1103P'])],
-    variables: [v('Reprise', 'proportion', { seuil: 5 }), v('Longueur de pousse', 'continue', { unite: 'cm', min: 0, max: 200, seuil: 3 })],
-    plan: { lignes: 3, colonnes: 4 }
-  },
-  {
-    id: 'm-greffe', nom: 'Type de greffe ou opérateur', theme: 'Greffage',
-    resume: 'Machine, type de greffe ou opérateur, avec taux de casse et soudure.',
-    objectif: 'Comparer les opérateurs ou les machines de greffage.', question: '', hypothese: '',
-    dispositif: 'crd', uniteNom: 'lot', repetitions: 4,
-    facteurs: [f('Opérateur', ['Opérateur A', 'Opérateur B', 'Opérateur C'])],
-    variables: [v('Casse au greffage', 'proportion', { sens: 'moins', seuil: 2 }), v('Soudure 360°', 'binaire', { seuil: 5 })],
-    plan: { lignes: 3, colonnes: 4 }
-  },
-  {
-    id: 'm-dose', nom: 'Traitement ou biostimulant (doses)', theme: 'Traitements',
-    resume: 'Plusieurs doses d’un produit contre un témoin non traité.',
-    objectif: 'Trouver la dose utile du produit.', question: 'Quelle dose donne un effet sans gaspiller de produit ?', hypothese: '',
-    dispositif: 'blocs', uniteNom: 'lot', repetitions: 4,
-    facteurs: [f('Dose', [{ nom: '0 (témoin)', dose: 0 }, { nom: 'Demi-dose', dose: 0.5 }, { nom: 'Dose pleine', dose: 1 }, { nom: 'Double dose', dose: 2 }], { quantitatif: true, unite: 'L/ha' })],
-    variables: [v('Reprise', 'proportion', { seuil: 5 }), v('Longueur de pousse', 'continue', { unite: 'cm', seuil: 3 }), v('Phytotoxicité', 'ordinale', { echelle: 5, sens: 'moins' })],
-    plan: { lignes: 4, colonnes: 4 }
-  },
-  {
-    id: 'm-vinif', nom: 'Essai de vinification', theme: 'Cave',
-    resume: 'Levures, sulfitage ou macération comparés en cuves.',
-    objectif: 'Comparer deux levures sur le même moût.', question: '', hypothese: '',
-    dispositif: 'crd', uniteNom: 'cuve', repetitions: 3,
-    facteurs: [f('Levure', ['Levure habituelle', 'Levure B'])],
-    variables: [v('Degré alcoolique', 'continue', { unite: '% vol' }), v('Acidité volatile', 'continue', { unite: 'g/L H2SO4', sens: 'moins' }), v('Note de dégustation', 'ordinale', { echelle: 5 })],
-    plan: { lignes: 1, colonnes: 6 }
+    variables: [
+      v('Reprise (plant vivant)', 'binaire', { seuil: 5, notes: 'Pour chaque plant : Oui s’il est vivant (bois vert, bourgeon ou pousse vivants), Non s’il est mort.' }),
+      v('Débourrement', 'binaire', { seuil: 5, notes: 'Pour chaque plant : Oui si au moins un bourgeon a débourré, Non sinon.' }),
+      v('Vigueur de la pousse', 'ordinale', { echelle: 5, notes: 'Une note par plant : 0 = pas de pousse, 1 = pousse à peine sortie, 3 = pousse normale, 5 = pousse très vigoureuse.' }),
+      v('État des racines', 'ordinale', { echelle: 5, notes: 'Une note par plant : 0 = aucune racine, 1 = quelques racines, 3 = racines bien réparties, 5 = chevelu abondant et blanc.' })
+    ],
+    plan: { lignes: 0, colonnes: 0 }
   }
 ];
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* Ton essai d'acclimatation : 3 chauffes, créées une seule fois au premier lancement */
+(function (G) {
+  G.ESSAIS_ACCLIMATATION = [
+    { chauffe: 1, nom: 'Acclimatation · Chauffe 1 (atelier normal)', atelier: 'acclimatation normale en atelier avant le décaissage' },
+    { chauffe: 2, nom: 'Acclimatation · Chauffe 2 (atelier réduit)', atelier: 'temps d’acclimatation en atelier réduit avant le décaissage (durée à préciser)' },
+    { chauffe: 3, nom: 'Acclimatation · Chauffe 3 (décaissage direct)', atelier: 'décaissage direct, sans acclimatation en atelier' }
+  ];
 })(typeof window !== 'undefined' ? window : globalThis);

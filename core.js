@@ -1,6 +1,6 @@
 /* Essais — état, utilitaires, stockage, construction du plan */
 'use strict';
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 const ETAT = { essais: {}, modeles: {}, biblio: [], reglages: { theme: 'auto', derniereSauvegarde: null, derniereModif: null, rappelJours: 7 }, pret: false };
 let view = { ecran: 'accueil', id: null, onglet: 'saisie', filtre: 'actifs', q: '', confirm: null };
 

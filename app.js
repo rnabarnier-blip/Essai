@@ -385,9 +385,23 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (rechargé) return; rechargé = true; location.reload(); });
   } catch (e) {}
 }
+function creerEssaisAcclimatation() {
+  if (ETAT.reglages.acclimatationCree || !DB.ok) return;
+  const mod = MODELES.find(m => m.id === 'm-acclimatation'); if (!mod) return;
+  ESSAIS_ACCLIMATATION.forEach(c => {
+    const e = depuisModele(mod);
+    e.nom = c.nom; e.dossier = String(new Date().getFullYear()); e.theme = 'Acclimatation'; e.statut = 'preparation'; e.lieu = 'Vivero Richter';
+    e.notes = `Chauffe ${c.chauffe} : ${c.atelier}.\nTémoin : acclimatation dehors habituelle (sous le porche puis sous la toile).\nFrigo : 13 à 15 jours, puis 1 jour d’acclimatation dedans ou dehors.\nNombre de lots et de plants par lot à préciser : renomme les porte-greffes et règle le nombre de lots dans Essai › Infos › Modifier la structure avant de saisir.\nAttention : les 3 chauffes n’ont pas lieu en même temps. La comparaison fiable est frigo contre dehors à l’intérieur d’une même chauffe ; l’écart entre chauffes mélange l’effet de l’atelier avec la date, le lot de plants et la météo.`;
+    construireUnites(e);
+    sauver(e, `Essai créé : chauffe ${c.chauffe}`);
+  });
+  ETAT.reglages.acclimatationCree = true; majReglages();
+}
+
 (async function demarrer() {
   render();
   await chargerTout();
+  creerEssaisAcclimatation();
   appliquerTheme();
   render();
 })();

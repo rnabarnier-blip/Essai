@@ -1,5 +1,5 @@
 /* Essais — service worker : tout fonctionne hors ligne */
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 const CACHE = 'essais-' + VERSION;
 const FICHIERS = ['./', 'index.html', 'styles.css', 'stats.js', 'analyse.js', 'modeles.js', 'db.js', 'core.js', 'wizard.js', 'essai.js', 'suivi.js', 'remplir.js', 'app.js',
   'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];

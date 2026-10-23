@@ -231,3 +231,5 @@ details > summary.btn::-webkit-details-marker { display: none; }
 .pal.partiel { background: var(--surface); }
 .pal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .progress.big { height: 14px; border-radius: 7px; }
+.big-btn.col { flex-direction: column; gap: 2px; padding-block: 10px; }
+.big-btn .sous { font-weight: 500; font-size: 15px; opacity: .9; }

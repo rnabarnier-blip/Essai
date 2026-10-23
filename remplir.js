@@ -63,8 +63,8 @@ function ecranListe(e, date, vars, us) {
         <label class="f">Ordre de passage<select data-sel="ordre">${[['rangee', 'Rangée par rangée'], ['serpentin', 'En aller-retour'], ['code', 'Par numéro']].map(([k, l]) => `<option value="${k}" ${(ETAT.reglages.ordre || 'rangee') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       </div>` : ''}
     </div>
-    <div class="row"><div class="progress grow"><i style="width:${us.length ? faits / us.length * 100 : 0}%"></i></div><span class="mono muted" style="font-size:14px">${faits}/${us.length} ${esc(UN)}</span></div>
-    ${prochain ? `<button class="btn pri block big-btn" data-act="r-ouvrir" data-id="${prochain.id}">${faits === 0 && !us.some(u => etat(u) === 'partiel') ? 'Commencer' : 'Continuer'} : ${esc(prochain.code)} <span style="font-weight:500">· ${esc(trtNom(e, prochain))}</span></button>`
+    <div class="row"><div class="progress grow"><i style="width:${us.length ? faits / us.length * 100 : 0}%"></i></div><span class="mono muted" style="font-size:14px">${faits}/${us.length} ${esc(us.length > 1 && !/[sx]$/.test(UN) ? UN + 's' : UN)}</span></div>
+    ${prochain ? `<button class="btn pri block big-btn col" data-act="r-ouvrir" data-id="${prochain.id}"><span>${faits === 0 && !us.some(u => etat(u) === 'partiel') ? 'Commencer' : 'Continuer'} : ${esc(prochain.code)}</span><span class="sous">${esc(trtNom(e, prochain))}</span></button>`
       : `<div class="verdict v-bon"><div class="big">Tout est rempli pour le ${fdate(date)}</div><div><button class="btn sm" data-act="onglet" data-v="resultats">Voir les résultats</button></div></div>`}
     <div class="card stack s"><div class="lbl">Plan · touche un ${esc(UN)} pour le remplir</div>${grille}
       <div class="legend"><span><i style="background:var(--accent)"></i>rempli ✓</span><span><i style="border:2px solid var(--accent);background:transparent"></i>commencé</span><span><i style="background:var(--sunk)"></i>à faire</span></div></div>
