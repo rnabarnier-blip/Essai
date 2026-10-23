@@ -34,6 +34,9 @@ function renderAccueil() {
   ${besoinSauvegarde() ? `<section class="banner warn"><span class="grow"><b>Pense à sauvegarder.</b> ${r.derniereSauvegarde ? 'Dernière sauvegarde le ' + fdate(r.derniereSauvegarde) + '.' : 'Aucune sauvegarde pour l’instant.'}</span><button class="btn sm pri" data-act="sauvegarder">Sauvegarder</button></section>` : ''}
   ${majDispo ? `<section class="banner info"><span class="grow">Une nouvelle version de l’app est prête.</span><button class="btn sm pri" data-act="maj">Mettre à jour</button></section>` : ''}
   <section class="row"><button class="btn pri grow" data-act="nouveau">+ Nouvel essai</button><button class="btn ghost" data-act="modeles">Modèles</button></section>
+  ${(() => { const af = aFaire(); return af.length ? `<section class="card stack s"><div class="row nowrap"><h2 class="grow">À faire</h2><span class="muted mono">${af.length}</span></div>
+    ${af.slice(0, 6).map(x => `<div class="obs-row"><div class="grow" style="min-width:0"><b>${esc(x.e.nom)}</b><div class="muted" style="font-size:14px">${fdate(x.c.date)} · ${jPlus(x.e, x.c.date)} · ${esc(x.c.vars && x.c.vars.length ? x.e.variables.filter(v => x.c.vars.includes(v.id)).map(v => v.nom).join(', ') : 'toutes les variables')}</div></div>
+      <span class="pill ${x.s.cls}">${esc(x.s.txt)}</span><button class="btn sm pri" data-act="afaire" data-id="${x.e.id}" data-v="${x.c.date}">Saisir</button></div>`).join('')}</section>` : ''; })()}
   ${all.length ? `<section class="stack">
     <input type="search" id="q" placeholder="Rechercher un essai, un thème, une année" value="${esc(view.q || '')}" aria-label="Rechercher">
     <div class="chips">${[['actifs', 'En cours'], ['preparation', 'En préparation'], ['termine', 'Terminés'], ['tous', 'Tous']].map(([k, l]) => `<button class="chip" data-act="filtre" data-v="${k}" aria-pressed="${f === k}">${l}</button>`).join('')}</div></section>
@@ -50,7 +53,9 @@ function carteEssai(e) {
   const nM = Object.values(e.mesures || {}).filter(mesureRemplie).length;
   return `<button class="card item" data-act="ouvrir" data-id="${e.id}">
     <div class="row nowrap"><span class="t grow">${esc(e.nom || 'Sans nom')}</span>${pill}</div>
-    <span class="meta">${e.theme ? `<span class="tag">${esc(e.theme)}</span>` : ''}<span>${STATUTS[e.statut] || ''}</span><span>· ${e.unites.length} ${esc(e.uniteNom)}</span><span>· ${e.variables.length} variable(s)</span><span>· ${nM} saisie(s)</span></span></button>`;
+    <span class="meta">${e.theme ? `<span class="tag">${esc(e.theme)}</span>` : ''}<span>${STATUTS[e.statut] || ''}</span><span>· ${e.unites.length} ${esc(e.uniteNom)}</span><span>· ${e.variables.length} variable(s)</span><span>· ${nM} saisie(s)</span></span>
+    ${(() => { const cal = e.calendrier || []; if (!cal.length) return ''; const f = cal.filter(c => statutObs(e, c).code === 'fait').length, p = prochaineObs(e);
+      return `<div class="row nowrap" style="gap:8px"><div class="progress grow"><i style="width:${f / cal.length * 100}%"></i></div><span class="mono muted" style="font-size:13px">${f}/${cal.length} obs.</span></div>${p ? `<span class="meta">Prochaine observation : ${fdate(p.date)} (${jPlus(e, p.date)})</span>` : ''}`; })()}</button>`;
 }
 
 /* ================= MODÈLES ================= */
@@ -92,6 +97,9 @@ function renderReglages() {
   <section class="card stack"><div class="lbl">Stockage</div><p class="aide" id="stock">Calcul…</p>
     <div><button class="btn sm ghost" data-act="persist">Protéger mes données</button></div>
     <p class="aide">Installe l’app sur l’écran d’accueil (Partager › Sur l’écran d’accueil) : Safari peut sinon effacer les données d’un site peu ouvert.</p></section>
+  <section class="card stack"><div class="lbl">Ma bibliothèque de variables</div>
+    <p class="aide">Les variables de tes essais y sont ajoutées automatiquement, avec leurs réglages (unité, seuil, consigne). Tu les retrouves lors de la création d’un essai.</p>
+    ${(ETAT.biblio || []).length ? `<div class="stack s">${ETAT.biblio.map((v, i) => `<div class="obs-row"><span class="grow"><b>${esc(v.nom)}</b> <span class="muted" style="font-size:14px">· ${TYPES[v.type] ? TYPES[v.type].nom : v.type}${v.unite ? ' · ' + esc(v.unite) : ''}</span></span><button class="x" data-act="biblio-del" data-i="${i}" aria-label="Retirer de la bibliothèque">×</button></div>`).join('')}</div>` : '<p class="aide">Vide pour l’instant.</p>'}</section>
   <section class="card stack"><div class="lbl">Importer depuis le Carnet d’essais</div>
     <p class="aide">Dans le Carnet d’essais, touche « Copier toutes les données », puis colle le texte ici.</p>
     <textarea id="import-carnet" placeholder="Colle ici les données copiées"></textarea>
@@ -138,6 +146,12 @@ async function restaurer(remplacer) {
 function casTests() {
   const S = Stats;
   const ctrl = [4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14], t1 = [4.81, 4.17, 4.41, 3.59, 5.87, 3.83, 6.03, 4.89, 4.32, 4.69], t2 = [6.31, 5.12, 5.54, 5.50, 5.37, 5.29, 4.92, 6.15, 5.80, 5.26];
+  const t2b = t2.slice(0, 8), anD = S.anova1([ctrl, t1, t2b]), lamD = [t1, t2b].map(g => Math.sqrt(g.length / (g.length + 10)));
+  const dun = [t1, t2b].map(g => 1 - S.pdunnett(Math.abs((S.mean(g) - S.mean(ctrl)) / Math.sqrt(anD.mse * (1 / g.length + 0.1))), lamD, anD.df2));
+  const sw = S.shapiro(ctrl), sw2 = S.shapiro([1, 2, 3, 4, 10, 25, 3, 2, 1, 5, 6, 7, 8, 30, 2]), lev = S.levene([ctrl, t1, t2]);
+  const Y2 = { '0,0': [10, 11, 12], '0,1': [13, 14, 13], '1,0': [11, 12, 12], '1,1': [17, 16, 18], '2,0': [9, 10, 11], '2,1': [12, 13, 14] }, ob2 = [];
+  Object.entries(Y2).forEach(([k, v]) => { const [a, b] = k.split(',').map(Number); v.forEach((y, r) => ob2.push({ a, b, y, bloc: r })); });
+  const an2 = S.anova2(ob2, 3, 2, false), an2b = S.anova2(ob2, 3, 2, true);
   const an = S.anova1([ctrl, t1, t2]), w = S.welch(t2, ctrl), d = S.desc(ctrl), bl = S.anovaBlocs([[10, 12, 14], [11, 14, 15], [9, 11, 13], [12, 13, 17]]), ch = S.chi2Prop([246, 263, 250], [300, 300, 300]);
   return [
     ['ANOVA à un facteur : F (PlantGrowth)', an.F, 4.846088, 1e-5, 'R : summary(aov(weight ~ group, PlantGrowth))'],
@@ -160,6 +174,16 @@ function casTests() {
     ['Loi F : P(F > 1,2), 5 et 40 ddl', S.fsurv(1.2, 5, 40), 0.326708, 1e-5, 'R : pf(1.2, 5, 40, lower = FALSE)'],
     ['Loi χ² : P(χ² > 10), 4 ddl', S.chi2surv(10, 4), 0.040428, 1e-5, 'R : pchisq(10, 4, lower = FALSE)'],
     ['Loi normale : quantile 97,5 %', S.ninv(0.975), 1.959964, 1e-5, 'R : qnorm(0.975)'],
+    ['Tukey : P(Q < 3,5), k = 3, 10 ddl', S.ptukey(3.5, 3, 10), 0.922897, 1e-5, 'R : ptukey(3.5, 3, 10)'],
+    ['Tukey : quantile 95 %, k = 4, 6 ddl', S.qtukey(0.95, 4, 6), 4.895599, 1e-4, 'R : qtukey(0.95, 4, 6)'],
+    ['Dunnett PlantGrowth trt1 contre ctrl', dun[0], 0.347421, 5e-4, 'SciPy : stats.dunnett(trt1, trt2[:8], control = ctrl)'],
+    ['Dunnett PlantGrowth trt2 contre ctrl', dun[1], 0.205994, 5e-4, 'SciPy : stats.dunnett'],
+    ['Shapiro-Wilk : W (ctrl)', sw.W, 0.956681, 1e-5, 'R : shapiro.test(ctrl)'],
+    ['Shapiro-Wilk : p (ctrl)', sw.p, 0.747473, 1e-4, 'R : shapiro.test(ctrl)'],
+    ['Shapiro-Wilk : p (données asymétriques, n = 15)', sw2.p, 0.000206, 1e-5, 'R : shapiro.test'],
+    ['Levene (médiane) PlantGrowth : p', lev.p, 0.341227, 1e-5, 'R : car::leveneTest(weight ~ group)'],
+    ['ANOVA 2 facteurs : p interaction', an2.AB.p, 0.029636, 1e-5, 'R : aov(y ~ a * b)'],
+    ['ANOVA 2 facteurs + blocs : p interaction', an2b.AB.p, 0.005216, 1e-5, 'R : aov(y ~ a * b + bloc)'],
     ['Probabilité bêta 8/10 > 3/10 (Monte-Carlo)', S.probBeta(8, 10, 3, 10, 'plus', 0, 40000).pMieux, 0.985, 0.01, 'Intégration numérique exacte ≈ 0,985']
   ].map(([nom, obt, att, tol, src]) => ({ nom, obt, att, tol, src, ok: Math.abs(obt - att) <= Math.max(tol, Math.abs(att) * 1e-4) }));
 }
@@ -193,6 +217,7 @@ document.addEventListener('click', async ev => {
   const b = ev.target.closest('[data-act]'); if (!b || b.disabled) return;
   const act = b.dataset.act, e = cur();
   if (act.startsWith('wiz-') && wiz && wizClic(act, b)) return;
+  if (e && view.ecran === 'essai' && /^(cal|iv)-|^gps$/.test(act) && suiviClic(act, b, e)) return;
   const u = b.dataset.u, vId = b.dataset.v;
   switch (act) {
     case 'accueil': go({ ecran: 'accueil' }); break;
@@ -202,18 +227,27 @@ document.addEventListener('click', async ev => {
     case 'autotest': go({ ecran: 'autotest' }); break;
     case 'ouvrir': go({ ecran: 'essai', id: b.dataset.id, onglet: 'saisie' }); break;
     case 'filtre': view.filtre = b.dataset.v; render(); break;
-    case 'onglet': view.onglet = b.dataset.v; view.confirm = null; render(); window.scrollTo(0, 0); break;
+    case 'onglet': if (view.onglet === 'saisie' && b.dataset.v === 'saisie') view.remplirU = null; view.onglet = b.dataset.v; view.confirm = null; render(); window.scrollTo(0, 0); break;
     case 'confirm-non': view.confirm = null; render(); break;
     // saisie
     case 'saisie-var': view.saisieVar = vId; render(); break;
-    case 'saisie-mode': view.saisieMode = vId; render(); break;
-    case 'saisie-date': view.date = vId; render(); break;
+    case 'saisie-mode': view.saisieMode = vId; if (vId === 'terrain') { view.focusTerrain = true; view.terrainDebut = true; } render(); break;
+    case 'saisie-date': view.date = vId; view.remplirU = null; render(); break;
+    case 'r-ouvrir': view.remplirU = b.dataset.id; view.remplirV = null; view.focusSaisie = true; render(); window.scrollTo(0, 0); break;
+    case 'r-liste': view.remplirU = null; view.remplirV = null; render(); window.scrollTo(0, 0); break;
+    case 'r-options': view.rOptions = !view.rOptions; render(); break;
+    case 'r-var': view.remplirV = +vId; view.focusSaisie = true; render(); break;
+    case 'r-suivant': clearTimeout(view.tAvance); avancer(e); break;
+    case 'aide-ok': ETAT.reglages.aideRemplir = true; majReglages(); render(); break;
+    case 'section': view.section = vId; view.confirm = null; render(); break;
+    case 't-prec': view.terrainI = Math.max(0, (view.terrainI || 0) - 1); view.focusTerrain = true; render(); window.scrollTo(0, 0); break;
+    case 't-suiv': view.terrainI = (view.terrainI || 0) + 1; view.focusTerrain = true; render(); window.scrollTo(0, 0); break;
     case 'u-prec': view.saisieU = Math.max(0, (view.saisieU || 0) - 1); render(); window.scrollTo(0, 0); break;
     case 'u-suiv': view.saisieU = Math.min(e.unites.length - 1, (view.saisieU || 0) + 1); render(); window.scrollTo(0, 0); break;
     case 'meteo': { const j = (e.journees = e.journees || {})[view.date] = Object.assign({}, (e.journees || {})[view.date]); j.meteo = j.meteo === vId ? '' : vId; view.jourOuvert = true; sauver(e); render(); break; }
-    case 'tap': { const m = ensureM(e, u, b.dataset.v, view.date); m.ok = (+m.ok || 0) + (+b.dataset.x); m.n = (+m.n || 0) + 1; (m.tap = m.tap || []).push(+b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); if (navigator.vibrate) navigator.vibrate(15); break; }
-    case 'score': { const m = ensureM(e, u, b.dataset.v, view.date); m.vals.push(+b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); if (navigator.vibrate) navigator.vibrate(15); break; }
-    case 'cat': { const m = ensureM(e, u, b.dataset.v, view.date); m.cats = m.cats || {}; m.cats[b.dataset.x] = (m.cats[b.dataset.x] || 0) + 1; (m.tap = m.tap || []).push(b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); break; }
+    case 'tap': { const m = ensureM(e, u, b.dataset.v, view.date); m.ok = (+m.ok || 0) + (+b.dataset.x); m.n = (+m.n || 0) + 1; (m.tap = m.tap || []).push(+b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); if (navigator.vibrate) navigator.vibrate(15); apresSaisie(e, u); break; }
+    case 'score': { const m = ensureM(e, u, b.dataset.v, view.date); m.vals.push(+b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); if (navigator.vibrate) navigator.vibrate(15); apresSaisie(e, u); break; }
+    case 'cat': { const m = ensureM(e, u, b.dataset.v, view.date); m.cats = m.cats || {}; m.cats[b.dataset.x] = (m.cats[b.dataset.x] || 0) + 1; (m.tap = m.tap || []).push(b.dataset.x); sauver(e); rafraichirCarte(e, u, b.dataset.v); apresSaisie(e, u); break; }
     case 'annuler': { const v = e.variables.find(x => x.id === b.dataset.v); const m = getM(e, u, v.id, view.date); if (!m) break;
       if (v.type === 'binaire') { const x = (m.tap || []).pop(); if (x == null) break; m.ok = Math.max(0, (+m.ok || 0) - x); m.n = Math.max(0, (+m.n || 0) - 1); }
       else if (v.type === 'categorie') { const x = (m.tap || []).pop(); if (x == null) break; m.cats[x] = Math.max(0, (m.cats[x] || 0) - 1); }
@@ -236,6 +270,11 @@ document.addEventListener('click', async ev => {
     // infos
     case 'temoin': { const f = e.facteurs[+b.dataset.f]; f.modalites.forEach((m, i) => m.temoin = i === +b.dataset.m); sauver(e, `Témoin : ${f.modalites[+b.dataset.m].nom}`); render(); break; }
     case 'var-add': { const v = { id: 'v-' + uid(), nom: 'Nouvelle variable', type: 'continue', unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '' }; e.variables.push(v); view.varOuverte = v.id; sauver(e, 'Variable ajoutée'); render(); break; }
+    case 'var-biblio-add': { const v = clone(biblioProposee(e)[+b.dataset.i]); if (!v) break; v.id = 'v-' + uid(); e.variables.push(Object.assign({ unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '', cible: '' }, v)); view.varOuverte = v.id; sauver(e, 'Variable ajoutée : ' + v.nom); render(); break; }
+    case 'var-biblio': { const n = ajouterBiblio(e.variables.filter(x => x.id === b.dataset.id)); toast(n ? 'Ajoutée à ta bibliothèque' : 'Déjà dans ta bibliothèque'); break; }
+    case 'biblio-del': ETAT.biblio.splice(+b.dataset.i, 1); DB.setReglage('biblio', ETAT.biblio).catch(() => {}); render(); break;
+    case 'aller-ok': allerA(); break;
+    case 'afaire': go({ ecran: 'essai', id: b.dataset.id, onglet: 'saisie', date: b.dataset.v, remplirU: null }); break;
     case 'var-del': view.confirm = 'var-' + b.dataset.id; render(); break;
     case 'var-del-ok': { const id = b.dataset.id; const v = e.variables.find(x => x.id === id); e.variables = e.variables.filter(x => x.id !== id); Object.keys(e.mesures || {}).forEach(k => { if (e.mesures[k].v === id) delete e.mesures[k]; }); view.confirm = null; sauver(e, `Variable supprimée : ${v ? v.nom : ''}`); render(); break; }
     case 'structure': ouvrirStructure(e); break;
@@ -275,6 +314,7 @@ document.addEventListener('input', ev => {
   const el = ev.target;
   if (view.ecran === 'wizard' && wiz && el.dataset.w) { wizInput(el, false); return; }
   const e = cur(); if (!e || view.ecran !== 'essai') return;
+  if (suiviInput(el, e)) return;
   if (el.dataset.m) { // champ de mesure
     const m = ensureM(e, el.dataset.u, el.dataset.v, view.date), k = el.dataset.m;
     if (k === 'txt' || k === 'raison') m[k] = el.value;
@@ -300,9 +340,11 @@ document.addEventListener('change', async ev => {
     try { const id = await ajouterPhoto(e, f); const m = ensureM(e, el.dataset.photoU, el.dataset.photoV, view.date); (m.photos = m.photos || []).push(id); sauver(e); rafraichirCarte(e, el.dataset.photoU, el.dataset.photoV); toast('Photo ajoutée'); }
     catch (x) { toast('Photo impossible à enregistrer', 3000); } return; }
   if (el.id === 'obs-photo' && el.files[0] && e) { try { const id = await ajouterPhoto(e, el.files[0]); (view.obsPhotos = view.obsPhotos || []).push(id); const n = document.getElementById('obs-photo-n'); if (n) n.textContent = view.obsPhotos.length + ' photo(s) prête(s)'; } catch (x) { toast('Photo impossible à enregistrer'); } return; }
-  if (el.dataset.sel === 'date') { view.date = el.value || today(); render(); return; }
+  if (el.dataset.sel === 'date') { view.date = el.value || today(); view.remplirU = null; render(); return; }
   if (el.dataset.sel === 'unite') { view.saisieU = +el.value; render(); return; }
   if (el.dataset.sel === 'resdate') { view.resDate = el.value; render(); return; }
+  if (el.dataset.sel === 'ordre') { view.ordre = el.value; ETAT.reglages.ordre = el.value; majReglages(); view.terrainDebut = true; render(); return; }
+  if (el.dataset.sel === 'auto') { ETAT.reglages.autoAvance = el.checked; majReglages(); return; }
   if (el.dataset.planE && e) { e.plan[el.dataset.planE] = Math.max(1, +el.value || 1); ajusterGrille(e); e.plan.tire = null; sauver(e, 'Disposition du plan modifiée'); render(); return; }
   if (e && view.ecran === 'essai' && (el.tagName === 'SELECT' && (el.dataset.e === 'statut' || el.dataset.rerender || (el.dataset.w && el.dataset.w[0] === '§')))) {
     if (el.dataset.var) { const vi = +el.dataset.var.split('.')[0]; view.varOuverte = e.variables[vi].id; }
@@ -314,19 +356,30 @@ document.addEventListener('change', async ev => {
 document.addEventListener('keydown', ev => {
   const el = ev.target;
   if (ev.key === 'Enter' && el.dataset.addval) { ev.preventDefault(); ajouterValeurs(cur(), el.dataset.u, el.dataset.v); }
+  if (ev.key === 'Enter' && el.id === 'aller') { ev.preventDefault(); allerA(); }
 });
 document.addEventListener('toggle', ev => { if (ev.target.id === 'jour') view.jourOuvert = ev.target.open; }, true);
+
+function allerA() {
+  const e = cur(), el = document.getElementById('aller'); if (!e || !el) return; const q = el.value.trim().toUpperCase(); if (!q) return;
+  const us = ordreUnites(e, view.ordre || ETAT.reglages.ordre || 'rangee');
+  let i = us.findIndex(u => u.code.toUpperCase() === q); if (i < 0) i = us.findIndex(u => u.code.toUpperCase().endsWith(q.replace(/^\D+/, '').padStart(2, '0'))); if (i < 0) i = us.findIndex(u => u.code.toUpperCase().includes(q));
+  if (i < 0) { toast('Code introuvable : ' + q); return; } view.terrainI = i; view.focusTerrain = true; render(); window.scrollTo(0, 0);
+}
 
 /* ================= THÈME, SERVICE WORKER, DÉMARRAGE ================= */
 function appliquerTheme() { const t = ETAT.reglages.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 let swReg = null, majDispo = false;
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   try {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
       swReg = reg;
       const surveiller = w => { if (!w) return; w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { majDispo = true; if (view.ecran === 'accueil') render(); } }); };
       if (reg.waiting && navigator.serviceWorker.controller) { majDispo = true; }
       reg.addEventListener('updatefound', () => surveiller(reg.installing));
+      if (reg.installing) surveiller(reg.installing);
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
     }).catch(() => {});
     let rechargé = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (rechargé) return; rechargé = true; location.reload(); });

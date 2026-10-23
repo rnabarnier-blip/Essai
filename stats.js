@@ -176,5 +176,103 @@ S.tost = function (diff, se, df, seuil) {
   return { p: Math.max(p1, p2) };
 };
 
+/* ---------- Intégration numérique (Simpson composite) ---------- */
+function simpson(f, a, b, n) { if (n % 2) n++; const h = (b - a) / n; let s = f(a) + f(b); for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2); return s * h / 3; }
+const phi = z => Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+/* densité de s = sqrt(chi2(df)/df) et bornes utiles */
+function sGrille(df) {
+  const lc = (df / 2) * Math.log(df) - lgamma(df / 2) - (df / 2 - 1) * Math.log(2);
+  const lo = Math.sqrt(Math.max(0, df - 12 * Math.sqrt(2 * df)) / df), hi = Math.sqrt((df + 12 * Math.sqrt(2 * df) + 50) / df);
+  return { f: s => s <= 0 ? 0 : Math.exp(lc + (df - 1) * Math.log(s) - df * s * s / 2), lo, hi };
+}
+function avecS(df, g) { // ∫ f(s) g(s) ds, ou g(1) si df très grand
+  if (!isFinite(df) || df > 2000) return g(1);
+  const G_ = sGrille(df); return simpson(s => G_.f(s) * g(s), G_.lo, G_.hi, 240);
+}
+/* Loi de l'étendue studentisée : P(Q <= q) pour k moyennes et df ddl */
+S.ptukey = function (q, k, df) {
+  if (!(q > 0)) return 0;
+  const W = w => Math.min(1, k * simpson(z => phi(z) * Math.pow(Math.max(0, S.ncdf(z) - S.ncdf(z - w)), k - 1), -8, 8 + w, 320));
+  return Math.min(1, Math.max(0, avecS(df, s => W(q * s))));
+};
+S.qtukey = function (p, k, df) { let lo = 0, hi = 50; for (let i = 0; i < 45; i++) { const m = (lo + hi) / 2; if (S.ptukey(m, k, df) < p) lo = m; else hi = m; } return (lo + hi) / 2; };
+/* Dunnett bilatéral : P(max|T_i| <= c), lambdas_i = sqrt(n_i / (n_i + n_témoin)) */
+S.pdunnett = function (c, lambdas, df) {
+  const L = lambdas.map(l => [l, Math.sqrt(1 - l * l)]);
+  const inner = cs => simpson(z => { let pr = phi(z); for (const [l, r] of L) { pr *= Math.max(0, S.ncdf((l * z + cs) / r) - S.ncdf((l * z - cs) / r)); if (pr < 1e-300) return 0; } return pr; }, -8, 8, 320);
+  return Math.min(1, Math.max(0, avecS(df, s => inner(c * s))));
+};
+/* Correction de Holm */
+S.holm = function (ps) {
+  const idx = ps.map((p, i) => [p, i]).filter(x => x[0] != null).sort((a, b) => a[0] - b[0]); const m = idx.length; const out = ps.slice(); let mx = 0;
+  idx.forEach(([p, i], r) => { mx = Math.max(mx, Math.min(1, (m - r) * p)); out[i] = mx; }); return out;
+};
+/* Lettres de groupes (méthode des intervalles sur moyennes triées) : pv(i,j) p-value ajustée, sens 'plus' = la plus grande moyenne reçoit « a » */
+S.lettres = function (moyennes, pv, alpha, sens) {
+  alpha = alpha || 0.05; const k = moyennes.length;
+  const ord = moyennes.map((m, i) => [m, i]).sort((a, b) => sens === 'moins' ? a[0] - b[0] : b[0] - a[0]).map(x => x[1]);
+  const L = Array.from({ length: k }, () => ''); let derniereFin = -1; let n = 0;
+  for (let a = 0; a < k; a++) {
+    let b = a;
+    while (b + 1 < k) { let ok = true; for (let x = a; x <= b + 1 && ok; x++) for (let y = x + 1; y <= b + 1; y++) if (pv(ord[x], ord[y]) < alpha) { ok = false; break; } if (!ok) break; b++; }
+    if (b > derniereFin) { const lt = String.fromCharCode(97 + (n % 26)); n++; for (let x = a; x <= b; x++) L[ord[x]] += lt; derniereFin = b; }
+  }
+  return L;
+};
+/* Shapiro-Wilk (algorithme de Royston 1992, n de 3 à 5000) */
+S.shapiro = function (x) {
+  const n = x.length; if (n < 3) return null;
+  const y = x.slice().sort((a, b) => a - b), mu = S.mean(y), ssq = y.reduce((s, v) => s + (v - mu) ** 2, 0);
+  if (ssq === 0) return { W: 1, p: 1 };
+  let a = new Array(n);
+  if (n === 3) { a = [-Math.SQRT1_2, 0, Math.SQRT1_2]; }
+  else {
+    const m = Array.from({ length: n }, (_, i) => S.ninv((i + 1 - 0.375) / (n + 0.25))); const mm = m.reduce((s, v) => s + v * v, 0);
+    const u = 1 / Math.sqrt(n), cn = m[n - 1] / Math.sqrt(mm), cn1 = m[n - 2] / Math.sqrt(mm);
+    const an = cn + 0.221157 * u - 0.147981 * u ** 2 - 2.071190 * u ** 3 + 4.434685 * u ** 4 - 2.706056 * u ** 5;
+    let phi_;
+    if (n > 5) { const an1 = cn1 + 0.042981 * u - 0.293762 * u ** 2 - 1.752461 * u ** 3 + 5.682633 * u ** 4 - 3.582633 * u ** 5;
+      phi_ = (mm - 2 * m[n - 1] ** 2 - 2 * m[n - 2] ** 2) / (1 - 2 * an ** 2 - 2 * an1 ** 2);
+      for (let i = 0; i < n; i++) a[i] = m[i] / Math.sqrt(phi_); a[n - 1] = an; a[0] = -an; a[n - 2] = an1; a[1] = -an1; }
+    else { phi_ = (mm - 2 * m[n - 1] ** 2) / (1 - 2 * an ** 2); for (let i = 0; i < n; i++) a[i] = m[i] / Math.sqrt(phi_); a[n - 1] = an; a[0] = -an; }
+  }
+  const W = Math.min(1, Math.pow(a.reduce((s, ai, i) => s + ai * y[i], 0), 2) / ssq);
+  let p;
+  if (n === 3) p = Math.max(0, Math.min(1, 6 / Math.PI * (Math.asin(Math.sqrt(W)) - Math.asin(Math.sqrt(0.75)))));
+  else if (n <= 11) { const g = 0.459 * n - 2.273, m_ = 0.5440 - 0.39978 * n + 0.025054 * n * n - 0.0006714 * n ** 3, s = Math.exp(1.3822 - 0.77857 * n + 0.062767 * n * n - 0.0020322 * n ** 3);
+    const w1 = g - Math.log(1 - W); p = w1 <= 0 ? 0 : 1 - S.ncdf((-Math.log(w1) - m_) / s); }
+  else { const ln = Math.log(n), m_ = -1.5861 - 0.31082 * ln - 0.083751 * ln * ln + 0.0038915 * ln ** 3, s = Math.exp(-0.4803 - 0.082676 * ln + 0.0030302 * ln * ln);
+    p = 1 - S.ncdf((Math.log(1 - W) - m_) / s); }
+  return { W, p: Math.max(0, Math.min(1, p)) };
+};
+/* Levene centré sur la médiane (Brown-Forsythe) */
+S.levene = function (groups) {
+  const g = groups.filter(x => x.length > 0); if (g.length < 2 || g.some(x => x.length < 2)) return null;
+  const z = g.map(x => { const md = S.quantile(x, 0.5); return x.map(v => Math.abs(v - md)); });
+  const r = S.anova1(z); return { F: r.F, p: isFinite(r.p) ? r.p : 1 };
+};
+/* ANOVA à 2 facteurs équilibrée (avec blocs facultatifs). obs: [{a, b, y, bloc}] avec a ∈ 0..A-1, b ∈ 0..B-1 */
+S.anova2 = function (obs, A, B, avecBlocs) {
+  const N = obs.length, gm = S.mean(obs.map(o => o.y));
+  const cell = {}; obs.forEach(o => (cell[o.a + ',' + o.b] = cell[o.a + ',' + o.b] || []).push(o.y));
+  const r = cell['0,0'] ? cell['0,0'].length : 0;
+  for (let i = 0; i < A; i++) for (let j = 0; j < B; j++) if (!cell[i + ',' + j] || cell[i + ',' + j].length !== r) return null;
+  if (r < 1 || (!avecBlocs && r < 2)) return null;
+  const mA = [], mB = [], mC = {};
+  for (let i = 0; i < A; i++) mA.push(S.mean(obs.filter(o => o.a === i).map(o => o.y)));
+  for (let j = 0; j < B; j++) mB.push(S.mean(obs.filter(o => o.b === j).map(o => o.y)));
+  Object.keys(cell).forEach(k => mC[k] = S.mean(cell[k]));
+  const ssT = obs.reduce((s, o) => s + (o.y - gm) ** 2, 0);
+  const ssA = B * r * mA.reduce((s, m) => s + (m - gm) ** 2, 0), ssB = A * r * mB.reduce((s, m) => s + (m - gm) ** 2, 0);
+  let ssAB = 0; for (let i = 0; i < A; i++) for (let j = 0; j < B; j++) ssAB += r * (mC[i + ',' + j] - mA[i] - mB[j] + gm) ** 2;
+  let ssBl = 0, dfBl = 0;
+  if (avecBlocs) { const bls = [...new Set(obs.map(o => o.bloc))]; if (bls.length !== r) return null; dfBl = r - 1;
+    bls.forEach(bl => { const v = obs.filter(o => o.bloc === bl).map(o => o.y); if (v.length !== A * B) ssBl = NaN; else ssBl += A * B * (S.mean(v) - gm) ** 2; }); if (isNaN(ssBl)) return null; }
+  const dfA = A - 1, dfB = B - 1, dfAB = dfA * dfB, dfE = N - 1 - dfA - dfB - dfAB - dfBl; if (dfE < 1) return null;
+  const ssE = Math.max(0, ssT - ssA - ssB - ssAB - ssBl), mse = ssE / dfE;
+  const t = (ss, df) => { const F = mse > 0 ? (ss / df) / mse : (ss > 0 ? Infinity : 0); return { ss, df, F, p: S.fsurv(F, df, dfE) }; };
+  return { A: t(ssA, dfA), B: t(ssB, dfB), AB: t(ssAB, dfAB), bloc: avecBlocs ? t(ssBl, dfBl) : null, dfE, mse, ssE, r, mC, mA, mB };
+};
+
 G.Stats = S;
 })(typeof window !== 'undefined' ? window : globalThis);

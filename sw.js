@@ -1,7 +1,7 @@
 /* Essais — service worker : tout fonctionne hors ligne */
-const VERSION = '0.1.0';
+const VERSION = '0.3.0';
 const CACHE = 'essais-' + VERSION;
-const FICHIERS = ['./', 'index.html', 'styles.css', 'stats.js', 'analyse.js', 'modeles.js', 'db.js', 'core.js', 'wizard.js', 'essai.js', 'app.js',
+const FICHIERS = ['./', 'index.html', 'styles.css', 'stats.js', 'analyse.js', 'modeles.js', 'db.js', 'core.js', 'wizard.js', 'essai.js', 'suivi.js', 'remplir.js', 'app.js',
   'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', ev => {
   ev.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS.map(f => new Request(f, { cache: 'reload' })))));

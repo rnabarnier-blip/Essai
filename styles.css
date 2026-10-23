@@ -212,3 +212,22 @@ details .gl b { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 .direct { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 8px; align-items: center; font-size: 15px; }
+
+/* v0.2 : suivi et mode terrain */
+.obs-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.obs-row:last-child { border-bottom: 0; }
+.terrain-head { border-width: 2px; }
+.code.big { font-size: 30px; padding: 8px 14px; border-radius: 12px; }
+details > summary.btn { list-style: none; }
+details > summary.btn::-webkit-details-marker { display: none; }
+
+/* v0.3 : remplir pas à pas */
+.big-btn { min-height: 64px; font-size: 18px; border-radius: 18px; }
+.consigne { font-size: 17px; background: var(--sunk); border-radius: 12px; padding: 12px 14px; }
+.aide-card { background: var(--equiv-soft); border-color: transparent; }
+.etapes { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.pal { min-width: 78px; min-height: 64px; border-radius: 12px; padding: 6px 8px; display: grid; align-content: space-between; text-align: left; font-size: 12px; background: var(--sunk); border: 2.5px solid transparent; color: var(--ink); }
+.pal b { font-family: var(--f-mono); font-size: 15px; }
+.pal.partiel { background: var(--surface); }
+.pal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.progress.big { height: 14px; border-radius: 7px; }

@@ -1,7 +1,7 @@
 /* Essais — état, utilitaires, stockage, construction du plan */
 'use strict';
-const VERSION = '0.1.0';
-const ETAT = { essais: {}, modeles: {}, reglages: { theme: 'auto', derniereSauvegarde: null, derniereModif: null, rappelJours: 7 }, pret: false };
+const VERSION = '0.3.0';
+const ETAT = { essais: {}, modeles: {}, biblio: [], reglages: { theme: 'auto', derniereSauvegarde: null, derniereModif: null, rappelJours: 7 }, pret: false };
 let view = { ecran: 'accueil', id: null, onglet: 'saisie', filtre: 'actifs', q: '', confirm: null };
 
 /* ---------- Utilitaires ---------- */
@@ -52,8 +52,9 @@ function sauverNow(e) { clearTimeout(timers[e.id]); return DB.put('essais', e); 
 let tReg; function majReglages() { clearTimeout(tReg); tReg = setTimeout(() => DB.setReglage('app', ETAT.reglages).catch(() => {}), 500); }
 async function chargerTout() {
   try {
-    const [es, ms, reg] = await Promise.all([DB.tous('essais'), DB.tous('modeles'), DB.reglage('app', null)]);
-    es.forEach(e => ETAT.essais[e.id] = e); ms.forEach(m => ETAT.modeles[m.id] = m);
+    const [es, ms, reg, bib] = await Promise.all([DB.tous('essais'), DB.tous('modeles'), DB.reglage('app', null), DB.reglage('biblio', [])]);
+    ETAT.biblio = Array.isArray(bib) ? bib : [];
+    es.forEach(e => { e.calendrier = e.calendrier || []; e.interventions = e.interventions || []; e.site = e.site || {}; ETAT.essais[e.id] = e; }); ms.forEach(m => ETAT.modeles[m.id] = m);
     if (reg) Object.assign(ETAT.reglages, reg);
   } catch (err) { DB.ok = false; }
   ETAT.pret = true;
@@ -160,8 +161,8 @@ function depuisModele(mod) {
     debut: today(), fin: '', lieu: d.lieu || '', responsable: d.responsable || '', notes: '', dossier: String(new Date().getFullYear()), theme: d.theme || '',
     statut: 'preparation', dispositif: d.dispositif || 'crd', uniteNom: d.uniteNom || 'palox', repetitions: d.repetitions || 3,
     facteurs: (d.facteurs || []).map(f => Object.assign({}, f, { id: 'f-' + uid(), modalites: f.modalites.map(m => Object.assign({}, m, { id: 'mo-' + uid() + Math.random().toString(36).slice(2, 4) })) })),
-    variables: (d.variables || []).map(v => Object.assign({ unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '' }, v, { id: 'v-' + uid() + Math.random().toString(36).slice(2, 4) })),
-    unites: [], plan: Object.assign({ lignes: 0, colonnes: 0 }, d.plan || {}), mesures: {}, journees: {}, observations: [], historique: [], cree: new Date().toISOString()
+    variables: (d.variables || []).map(v => Object.assign({ unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '', cible: '' }, v, { id: 'v-' + uid() + Math.random().toString(36).slice(2, 4) })),
+    unites: [], plan: Object.assign({ lignes: 0, colonnes: 0 }, d.plan || {}), mesures: {}, journees: {}, observations: [], historique: [], calendrier: [], interventions: [], site: {}, cree: new Date().toISOString()
   };
   if (!e.facteurs.length) e.facteurs = [{ id: 'f-' + uid(), nom: 'Traitement', quantitatif: false, unite: '', modalites: [{ id: 'mo-' + uid() + 'a', nom: 'Témoin', temoin: true, dose: '' }, { id: 'mo-' + uid() + 'b', nom: 'Traitement A', temoin: false, dose: '' }] }];
   return e;

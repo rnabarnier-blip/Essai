@@ -1,7 +1,7 @@
 /* Essais — modèles d'essais prêts à l'emploi */
 (function (G) {
 'use strict';
-const v = (nom, type, o) => Object.assign({ nom, type, unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '' }, o || {});
+const v = (nom, type, o) => Object.assign({ nom, type, unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '', cible: '' }, o || {});
 const f = (nom, mods, o) => Object.assign({ nom, quantitatif: false, unite: '', modalites: mods.map((m, i) => (typeof m === 'string' ? { nom: m, temoin: i === 0, dose: '' } : Object.assign({ temoin: i === 0, dose: '' }, m))) }, o || {});
 
 G.MODELES = [
@@ -14,10 +14,10 @@ G.MODELES = [
     dispositif: 'blocs', uniteNom: 'palox', repetitions: 3,
     facteurs: [f('Couverture', ['Épaisse', 'Fine', 'Fine + plastique'])],
     variables: [
-      v('Soudure 360°', 'binaire', { seuil: 5, notes: 'Observer 50 plants par palox à la sortie de chauffe.' }),
-      v('Moisissure', 'binaire', { sens: 'moins', seuil: 3 }),
-      v('État des bourgeons', 'ordinale', { echelle: 5, notes: '0 = sec ou mort, 5 = débourré sain' }),
-      v('Développement racinaire', 'ordinale', { echelle: 5, notes: '0 = aucune racine, 5 = chevelu abondant' })
+      v('Soudure 360°', 'binaire', { seuil: 5, cible: 50, notes: 'Observer 50 plants par palox à la sortie de chauffe.' }),
+      v('Moisissure', 'binaire', { sens: 'moins', seuil: 3, cible: 50 }),
+      v('État des bourgeons', 'ordinale', { echelle: 5, cible: 10, notes: '0 = sec ou mort, 5 = débourré sain. 10 plants par palox.' }),
+      v('Développement racinaire', 'ordinale', { echelle: 5, cible: 10, notes: '0 = aucune racine, 5 = chevelu abondant. 10 plants par palox.' })
     ],
     plan: { lignes: 3, colonnes: 3 }
   },

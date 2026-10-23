@@ -113,7 +113,8 @@ function wizVariables(e) {
     <label class="f">Type<select data-w="variables.${vi}.type" data-rerender="1">${Object.entries(TYPES).map(([k, t]) => `<option value="${k}" ${v.type === k ? 'selected' : ''}>${t.nom} (${t.ex})</option>`).join('')}</select></label>
     ${varChamps(v, 'variables.' + vi)}
   </div>`).join('')}
-  <button class="btn ghost" data-act="wiz-add-var">+ Ajouter une variable</button>`;
+  <button class="btn ghost" data-act="wiz-add-var">+ Ajouter une variable</button>
+  ${(() => { const bp = biblioProposee(e); return bp.length ? `<div class="lbl">Depuis ma bibliothèque</div><div class="chips">${bp.map((v, i) => `<button class="chip" data-act="wiz-biblio" data-i="${i}">+ ${esc(v.nom)}</button>`).join('')}</div>` : ''; })()}`;
 }
 function varChamps(v, p) {
   const t = v.type, out = [];
@@ -130,6 +131,7 @@ function varChamps(v, p) {
   }
   if (!['categorie', 'texte'].includes(t)) out.push(`<label class="f">Le meilleur résultat, c’est…<select data-w="${p}.sens"><option value="plus" ${v.sens !== 'moins' ? 'selected' : ''}>Plus haut (reprise, croissance)</option><option value="moins" ${v.sens === 'moins' ? 'selected' : ''}>Plus bas (mortalité, maladie, casse)</option></select></label>`);
   if (['binaire', 'proportion', 'continue', 'comptage', 'ordinale', 'delai'].includes(t)) out.push(`<p class="aide">Le seuil utile est l’écart minimum qui vaut la peine de changer de pratique. L’app calcule la probabilité de le dépasser.</p>`);
+  if (['binaire', 'ordinale', 'continue', 'comptage', 'categorie', 'delai'].includes(t)) out.push(`<label class="f">Plants à observer par unité<input type="number" inputmode="numeric" min="0" data-w="${p}.cible" value="${esc(v.cible ?? '')}" placeholder="ex. 50"><span class="aide">En mode terrain, l’app passe à l’unité suivante quand ce nombre est atteint.</span></label>`);
   out.push(`<label class="f">Consigne de mesure<input data-w="${p}.notes" value="${esc(v.notes || '')}" placeholder="ex. 50 plants par palox à la sortie de chauffe"></label>`);
   return out.join('');
 }
@@ -184,7 +186,7 @@ function wizValider() {
   }
   return true;
 }
-function focusEl(id) { setTimeout(() => { const el = document.getElementById(id); if (el) el.focus(); }, 30); }
+function focusEl(id) { setTimeout(() => { const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; const el = document.getElementById(id); if (el) el.focus(); }, 30); }
 
 function wizTerminer() {
   const e = wiz.e;
@@ -195,6 +197,7 @@ function wizTerminer() {
     sauver(orig, 'Structure de l’essai modifiée'); wiz = null; go({ ecran: 'essai', id: orig.id, onglet: 'plan' }); toast('Structure enregistrée'); return;
   }
   e.statut = 'en-cours';
+  ajouterBiblio(e.variables);
   sauver(e, 'Essai créé'); const id = e.id; wiz = null;
   go({ ecran: 'essai', id, onglet: 'saisie' }); toast('Essai créé');
 }
@@ -214,7 +217,8 @@ function wizClic(act, b) {
     case 'wiz-add-fac': e.facteurs.push({ id: 'f-' + uid(), nom: '', quantitatif: false, unite: '', modalites: [{ id: 'mo-' + uid() + 'a', nom: '', temoin: true, dose: '' }, { id: 'mo-' + uid() + 'b', nom: '', temoin: false, dose: '' }] }); if (['deux', 'crd'].includes(e.dispositif)) e.dispositif = 'factoriel'; break;
     case 'wiz-del-fac': e.facteurs.splice(+b.dataset.i, 1); if (e.facteurs.length === 1 && e.dispositif === 'factoriel') e.dispositif = 'crd'; break;
     case 'wiz-unite': e.uniteNom = b.dataset.v; break;
-    case 'wiz-add-var': e.variables.push({ id: 'v-' + uid(), nom: '', type: 'continue', unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '' }); render(); focusEl('w-v' + (e.variables.length - 1)); return true;
+    case 'wiz-add-var': e.variables.push({ id: 'v-' + uid(), nom: '', type: 'continue', unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '', cible: '' }); render(); focusEl('w-v' + (e.variables.length - 1)); return true;
+    case 'wiz-biblio': { const v = clone(biblioProposee(e)[+b.dataset.i]); if (v) { v.id = 'v-' + uid(); e.variables.push(Object.assign({ unite: '', min: '', max: '', sens: 'plus', seuil: '', echelle: 5, categories: [], notes: '', cible: '' }, v)); } break; }
     case 'wiz-del-var': e.variables.splice(+b.dataset.i, 1); break;
     case 'wiz-tirer': construireUnites(e); tirerPlan(e); break;
     default: return false;
